@@ -1,20 +1,16 @@
+from abc import ABC, abstractmethod
 import time
 import logging
 from typing import Awaitable, Callable
 
-from starlette.requests import Request
-from starlette.datastructures import Headers, MutableHeaders
+from starlette.datastructures import MutableHeaders
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
-async def time_request(request: Request, call_next):
-    start_time = time.monotonic()
-    response = await call_next(request)
-    end_time = time.monotonic()
-    duration = end_time - start_time
-    response.headers["X-Bug-Receive-Time"] = str(start_time)
-    response.headers["X-Bug-Respond-Time"] = str(end_time)
-    response.headers["X-Bug-Process-Time"] = str(duration)
-    
+__all__ = [
+    "BasicMiddleware",
+    "TimingMiddleware",
+]
+
 
 def map_state_to_headers(state: dict) -> dict:
     headers = {
@@ -23,15 +19,29 @@ def map_state_to_headers(state: dict) -> dict:
     }
     return headers
     
-    
-class TimingMiddleware:
-    def __init__(self, app: ASGIApp):
 
+class BasicMiddleware(ABC):
+    def __init__(self, app: ASGIApp):
         self.logger = logging.getLogger('debug.access')
         self.logger.setLevel(logging.INFO)
         self.logger.addHandler(logging.StreamHandler())
         self.app = app
 
+    @abstractmethod
+    async def send_wrapper(self, message: Message, send: Send, state: dict):
+        ...
+
+    def send_factory(self, send: Send, state: dict) -> Callable[[Message], Awaitable[None]]:
+        return lambda message: self.send_wrapper(message, send, state)
+
+    @abstractmethod
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        ...
+
+
+class TimingMiddleware(BasicMiddleware):
+    def __init__(self, app: ASGIApp):
+        super().__init__(app)
 
     async def send_wrapper(self, message: Message, send: Send, state: dict):
         if message['type'] == 'http.request':
@@ -45,11 +55,6 @@ class TimingMiddleware:
             message["headers"] = headers.raw
 
         await send(message)
-
-
-    def send_factory(self, send: Send, state: dict) -> Callable[[Message], Awaitable[None]]:
-        return lambda message: self.send_wrapper(message, send, state)
-
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send):
         # Ignore non-HTTP scopes
