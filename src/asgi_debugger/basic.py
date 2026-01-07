@@ -79,15 +79,20 @@ class TimingMiddleware(BasicMiddleware):
 
 
 class QueryLoggerMiddleware(BasicMiddleware):
+    @staticmethod
+    def _clean_data(data: bytes) -> str:
+        text = data.decode("utf-8").removeprefix("data: ")
+        return text
+        
     async def send_wrapper(self, message: Message, send: Send, state: dict):
         if message["type"] == "http.request":
-            data = message.get("body", b"").decode("utf-8")
+            data = QueryLoggerMiddleware._clean_data(message.get("body", b""))
             try:
                 state["request_data"] = json.loads(data)
             except json.JSONDecodeError:
                 state["request_data"] = data
         if message["type"] == "http.response.body":
-            data = message.get("body", b"").decode("utf-8")
+            data = QueryLoggerMiddleware._clean_data(message.get("body", b""))
             try:
                 response_data = json.loads(data)
             except json.JSONDecodeError:
@@ -109,7 +114,6 @@ class QueryLoggerMiddleware(BasicMiddleware):
             await self.app(scope, receive, self.send_factory(send, state))
 
         finally:
-            state["end_time"] = time.monotonic()
             self.logger.info(
                 '[%s] [INFO] "%s %s"\nrequest: %s\nresponse: %s',
                 time.strftime("%Y-%m-%d %H:%M:%S %z"),
