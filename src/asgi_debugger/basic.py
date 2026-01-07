@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import time
 import logging
+import json
 from typing import Awaitable, Callable
 
 from starlette.datastructures import MutableHeaders
@@ -9,6 +10,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 __all__ = [
     "BasicMiddleware",
     "TimingMiddleware",
+    "QueryLoggerMiddleware",
 ]
 
 
@@ -21,6 +23,9 @@ def map_state_to_headers(state: dict) -> dict:
     
 
 class BasicMiddleware(ABC):
+    logger: logging.Logger
+    app: ASGIApp
+    
     def __init__(self, app: ASGIApp):
         self.logger = logging.getLogger('debug.access')
         self.logger.setLevel(logging.INFO)
@@ -40,9 +45,6 @@ class BasicMiddleware(ABC):
 
 
 class TimingMiddleware(BasicMiddleware):
-    def __init__(self, app: ASGIApp):
-        super().__init__(app)
-
     async def send_wrapper(self, message: Message, send: Send, state: dict):
         if message['type'] == 'http.request':
             state["receive_time"] = time.monotonic()
@@ -75,4 +77,45 @@ class TimingMiddleware(BasicMiddleware):
                 scope['method'],
                 scope['path'],
                 state
+            )
+
+
+class QueryLoggerMiddleware(BasicMiddleware):
+    async def send_wrapper(self, message: Message, send: Send, state: dict):
+        if message['type'] == 'http.request':
+            data = message.get("body", b"").decode('utf-8')
+            try:
+                state["request_data"] = json.loads(data)
+            except json.JSONDecodeError:
+                state["request_data"] = data
+        if message['type'] == 'http.response.body':
+            data = message.get("body", b"").decode('utf-8')
+            try:
+                response_data = json.loads(data)
+            except json.JSONDecodeError:
+                response_data = data
+
+            if response_data and response_data != "[DONE]":
+                state["response_data"] = response_data
+                
+        await send(message)
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        # Ignore non-HTTP scopes
+        if scope['type'] != 'http':
+            return await self.app(scope, receive, send)
+
+        state = {}
+
+        try:
+            await self.app(scope, receive, self.send_factory(send, state))
+
+        finally:
+            state["end_time"] = time.monotonic()
+            self.logger.info('[%s] [INFO] "%s %s"\nrequest: %s\nresponse: %s',
+                time.strftime('%Y-%m-%d %H:%M:%S %z'),
+                scope['method'],
+                scope['path'],
+                state.get("request_data", "None"),
+                state.get("response_data", "None"),
             )

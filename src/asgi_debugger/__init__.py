@@ -1,3 +1,6 @@
-from .basic import TimingMiddleware
+from .basic import *
 
-__all__ = ["TimingMiddleware"]
+__all__ = [
+    "TimingMiddleware",
+    "QueryLoggingMiddleware",
+]
