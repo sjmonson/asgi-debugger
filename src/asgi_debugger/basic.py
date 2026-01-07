@@ -15,40 +15,37 @@ __all__ = [
 
 
 def map_state_to_headers(state: dict) -> dict:
-    headers = {
-        "X-Bug-" + k.replace("_", "-").title(): str(v)
-        for k, v in state.items()
-    }
+    headers = {"X-Bug-" + k.replace("_", "-").title(): str(v) for k, v in state.items()}
     return headers
-    
+
 
 class BasicMiddleware(ABC):
     logger: logging.Logger
     app: ASGIApp
-    
+
     def __init__(self, app: ASGIApp):
-        self.logger = logging.getLogger('debug.access')
+        self.logger = logging.getLogger("debug.access")
         self.logger.setLevel(logging.INFO)
         self.logger.addHandler(logging.StreamHandler())
         self.app = app
 
     @abstractmethod
-    async def send_wrapper(self, message: Message, send: Send, state: dict):
-        ...
+    async def send_wrapper(self, message: Message, send: Send, state: dict): ...
 
-    def send_factory(self, send: Send, state: dict) -> Callable[[Message], Awaitable[None]]:
+    def send_factory(
+        self, send: Send, state: dict
+    ) -> Callable[[Message], Awaitable[None]]:
         return lambda message: self.send_wrapper(message, send, state)
 
     @abstractmethod
-    async def __call__(self, scope: Scope, receive: Receive, send: Send):
-        ...
+    async def __call__(self, scope: Scope, receive: Receive, send: Send): ...
 
 
 class TimingMiddleware(BasicMiddleware):
     async def send_wrapper(self, message: Message, send: Send, state: dict):
-        if message['type'] == 'http.request':
+        if message["type"] == "http.request":
             state["receive_time"] = time.monotonic()
-        if message['type'] == 'http.response.start':
+        if message["type"] == "http.response.start":
             state["respond_time"] = time.monotonic()
 
             # Send debug headers at response start
@@ -60,7 +57,7 @@ class TimingMiddleware(BasicMiddleware):
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send):
         # Ignore non-HTTP scopes
-        if scope['type'] != 'http':
+        if scope["type"] != "http":
             return await self.app(scope, receive, send)
 
         state = {
@@ -72,24 +69,25 @@ class TimingMiddleware(BasicMiddleware):
 
         finally:
             state["end_time"] = time.monotonic()
-            self.logger.info('[%s] [INFO] "%s %s" with state: %s',
-                time.strftime('%Y-%m-%d %H:%M:%S %z'),
-                scope['method'],
-                scope['path'],
-                state
+            self.logger.info(
+                '[%s] [INFO] "%s %s" with state: %s',
+                time.strftime("%Y-%m-%d %H:%M:%S %z"),
+                scope["method"],
+                scope["path"],
+                state,
             )
 
 
 class QueryLoggerMiddleware(BasicMiddleware):
     async def send_wrapper(self, message: Message, send: Send, state: dict):
-        if message['type'] == 'http.request':
-            data = message.get("body", b"").decode('utf-8')
+        if message["type"] == "http.request":
+            data = message.get("body", b"").decode("utf-8")
             try:
                 state["request_data"] = json.loads(data)
             except json.JSONDecodeError:
                 state["request_data"] = data
-        if message['type'] == 'http.response.body':
-            data = message.get("body", b"").decode('utf-8')
+        if message["type"] == "http.response.body":
+            data = message.get("body", b"").decode("utf-8")
             try:
                 response_data = json.loads(data)
             except json.JSONDecodeError:
@@ -97,12 +95,12 @@ class QueryLoggerMiddleware(BasicMiddleware):
 
             if response_data and response_data != "[DONE]":
                 state["response_data"] = response_data
-                
+
         await send(message)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send):
         # Ignore non-HTTP scopes
-        if scope['type'] != 'http':
+        if scope["type"] != "http":
             return await self.app(scope, receive, send)
 
         state = {}
@@ -112,10 +110,11 @@ class QueryLoggerMiddleware(BasicMiddleware):
 
         finally:
             state["end_time"] = time.monotonic()
-            self.logger.info('[%s] [INFO] "%s %s"\nrequest: %s\nresponse: %s',
-                time.strftime('%Y-%m-%d %H:%M:%S %z'),
-                scope['method'],
-                scope['path'],
+            self.logger.info(
+                '[%s] [INFO] "%s %s"\nrequest: %s\nresponse: %s',
+                time.strftime("%Y-%m-%d %H:%M:%S %z"),
+                scope["method"],
+                scope["path"],
                 state.get("request_data", "None"),
                 state.get("response_data", "None"),
             )
