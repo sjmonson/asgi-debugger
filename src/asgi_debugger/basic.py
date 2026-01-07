@@ -85,6 +85,11 @@ class QueryLoggerMiddleware(BasicMiddleware):
         return text
         
     async def send_wrapper(self, message: Message, send: Send, state: dict):
+        self.logger.info(
+            '[%s] [INFO] Got request data: %s',
+            time.strftime("%Y-%m-%d %H:%M:%S %z"),
+            message
+        )
         if message["type"] == "http.request":
             data = QueryLoggerMiddleware._clean_data(message.get("body", b""))
             try:
