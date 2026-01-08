@@ -25,8 +25,9 @@ class BasicMiddleware(ABC):
 
     def __init__(self, app: ASGIApp):
         self.logger = logging.getLogger("debug.access")
-        self.logger.setLevel(logging.INFO)
-        self.logger.addHandler(logging.StreamHandler())
+        self.logger.setLevel(logging.INFO)  # TODO: Make configurable
+        if not self.logger.hasHandlers():
+            self.logger.addHandler(logging.StreamHandler())
         self.app = app
 
     @abstractmethod
