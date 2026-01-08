@@ -17,5 +17,79 @@ build-backend = "uv_build"
 
 [dependency-groups]
 dev = [
+    "pre-commit>=4.5.1",
     "ruff>=0.14.10",
+]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+indent-width = 4
+exclude = ["build", "dist", "env", ".venv*"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.ruff.lint]
+ignore = [
+    "COM812",  # ignore trailing comma errors due to older Python versions
+    "PD011",   # ignore .values usage since ruff assumes it's a Pandas DataFrame
+    "PLR0913", # ignore too many arguments in function definitions
+    "PLW1514", # allow Path.open without encoding
+    "RET505",  # allow `else` blocks
+    "RET506",  # allow `else` blocks
+    "S311",    # allow standard pseudo-random generators
+    "TC001",   # ignore imports used only for type checking
+    "TC002",   # ignore imports used only for type checking
+    "TC003",   # ignore imports used only for type checking
+]
+select = [
+    # Rules reference: https://docs.astral.sh/ruff/rules/
+
+    # Code Style / Formatting
+    "E",      # pycodestyle: checks adherence to PEP 8 conventions including spacing, indentation, and line length
+    "W",      # pycodestyle: checks adherence to PEP 8 conventions including spacing, indentation, and line length
+    "A",      # flake8-builtins: prevents shadowing of Python built-in names
+    "C",      # Convention: ensures code adheres to specific style and formatting conventions
+    "COM",    # flake8-commas: enforces the correct use of trailing commas
+    "ERA",    # eradicate: detects commented-out code that should be removed
+    "I",      # isort: ensures imports are sorted in a consistent manner
+    "ICN",    # flake8-import-conventions: enforces import conventions for better readability
+    "N",      # pep8-naming: enforces PEP 8 naming conventions for classes, functions, and variables
+    "NPY",    # NumPy: enforces best practices for using the NumPy library
+    "PD",     # pandas-vet: enforces best practices for using the pandas library
+    "PT",     # flake8-pytest-style: enforces best practices and style conventions for pytest tests
+    "PTH",    # flake8-use-pathlib: encourages the use of pathlib over os.path for file system operations
+    "Q",      # flake8-quotes: enforces consistent use of single or double quotes
+    "TCH",    # flake8-type-checking: enforces type checking practices and standards
+    "TID",    # flake8-tidy-imports: enforces tidy and well-organized imports
+    "RUF022", # flake8-ruff: enforce sorting of __all__ in modules
+
+    # Code Structure / Complexity
+    "C4",  # flake8-comprehensions: improves readability and performance of list, set, and dict comprehensions
+    "C90", # mccabe: checks for overly complex code using cyclomatic complexity
+    "ISC", # flake8-implicit-str-concat: prevents implicit string concatenation
+    "PIE", # flake8-pie: identifies and corrects common code inefficiencies and mistakes
+    "R",   # Refactor: suggests improvements to code structure and readability
+    "SIM", # flake8-simplify: simplifies complex expressions and improves code readability
+
+    # Code Security / Bug Prevention
+    "ARG",   # flake8-unused-arguments: detects unused function and method arguments
+    "ASYNC", # flake8-async: identifies incorrect or inefficient usage patterns in asynchronous code
+    "B",     # flake8-bugbear: detects common programming mistakes and potential bugs
+    "BLE",   # flake8-blind-except: prevents blind exceptions that catch all exceptions without handling
+    "E",     # Error: detects and reports errors in the code
+    "F",     # Pyflakes: detects unused imports, shadowed imports, undefined variables, and various formatting errors in string operations
+    "INP",   # flake8-no-pep420: prevents implicit namespace packages by requiring __init__.py
+    "PGH",   # pygrep-hooks: detects deprecated and dangerous code patterns
+    "PL",    # Pylint: comprehensive source code analyzer for enforcing coding standards and detecting errors
+    "RSE",   # flake8-raise: ensures exceptions are raised correctly
+    "S",     # flake8-bandit: detects security issues and vulnerabilities in the code
+    "SLF",   # flake8-self: prevents incorrect usage of the self argument in class methods
+    "T10",   # flake8-debugger: detects the presence of debugging tools such as pdb
+    "T20",   # flake8-print: detects print statements left in the code
+    "UP",    # pyupgrade: automatically upgrades syntax for newer versions of Python
+    "W",     # Warning: provides warnings about potential issues in the code
+    "YTT",   # flake8-2020: identifies code that will break with future Python releases
 ]
