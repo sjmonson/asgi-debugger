@@ -81,7 +81,7 @@ class TimingMiddleware(BasicMiddleware):
 class QueryLoggerMiddleware(BasicMiddleware):
     @staticmethod
     def _clean_data(data: bytes) -> str:
-        text = data.decode("utf-8").removeprefix("data: ")
+        text = data.decode("utf-8").removeprefix("data: ").strip()
         return text
         
     async def send_wrapper(self, message: Message, send: Send, state: dict):
