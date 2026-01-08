@@ -83,28 +83,27 @@ class QueryLoggerMiddleware(BasicMiddleware):
     def _clean_data(data: bytes) -> str:
         text = data.decode("utf-8").removeprefix("data: ").strip()
         return text
+
+    def log_message(self, data: dict | str, type_: str | None, state: dict):
+        self.logger.info("[QueryLogger] %s",
+            json.dumps({
+                "time": time.strftime("%Y-%m-%d %H:%M:%S %z"),
+                "method": state.get("method"),
+                "path": state.get("uri_path"),
+                "type": type_,
+                "data": data,
+            })
+        )
         
     async def send_wrapper(self, message: Message, send: Send, state: dict):
-        self.logger.info(
-            '[%s] [INFO] Got request data: %s',
-            time.strftime("%Y-%m-%d %H:%M:%S %z"),
-            message
-        )
-        if message["type"] == "http.request":
-            data = QueryLoggerMiddleware._clean_data(message.get("body", b""))
-            try:
-                state["request_data"] = json.loads(data)
-            except json.JSONDecodeError:
-                state["request_data"] = data
-        if message["type"] == "http.response.body":
-            data = QueryLoggerMiddleware._clean_data(message.get("body", b""))
-            try:
-                response_data = json.loads(data)
-            except json.JSONDecodeError:
-                response_data = data
+        data = QueryLoggerMiddleware._clean_data(message.get("body", b""))
+        # Attempt to parse JSON data
+        try:
+            data = json.loads(data)
+        except json.JSONDecodeError:
+            pass
 
-            if response_data and response_data != "[DONE]":
-                state["response_data"] = response_data
+        self.log_message(data, message.get("type"), state)
 
         await send(message)
 
@@ -113,17 +112,9 @@ class QueryLoggerMiddleware(BasicMiddleware):
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
 
-        state = {}
+        state = {
+            "method": scope["method"],
+            "uri_path": scope["path"],
+        }
 
-        try:
-            await self.app(scope, receive, self.send_factory(send, state))
-
-        finally:
-            self.logger.info(
-                '[%s] [INFO] "%s %s"\nrequest: %s\nresponse: %s',
-                time.strftime("%Y-%m-%d %H:%M:%S %z"),
-                scope["method"],
-                scope["path"],
-                state.get("request_data", "None"),
-                state.get("response_data", "None"),
-            )
+        await self.app(scope, receive, self.send_factory(send, state))
