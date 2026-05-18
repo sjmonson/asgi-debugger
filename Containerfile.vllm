@@ -2,10 +2,6 @@ ARG vllm_version=v0.12.0
 
 FROM docker.io/vllm/vllm-openai:${vllm_version}
 
-# For audio
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --system librosa soundfile mistral_common[audio]
-
 COPY / /middleware
 
 RUN --mount=type=cache,target=/root/.cache/uv \
