@@ -4,6 +4,11 @@ FROM docker.io/vllm/vllm-openai:${vllm_version}
 
 COPY / /middleware
 
+# Install the nss_wrapper package
+RUN apt-get update && \
+    apt-get install -y libnss-wrapper && \
+    rm -rf /var/lib/apt/lists/*
+
 RUN --mount=type=cache,target=/root/.cache/uv \
     --mount=type=bind,source=/,target=/middleware,relabel=shared \
     uv pip install --system /middleware
@@ -13,5 +18,11 @@ ENV HOME=/home/vllm
 RUN useradd --home-dir /home/vllm --gid 0 \
     --no-create-home --shell /bin/bash vllm || true && \
     chmod 775 /home/vllm
+
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh && chmod 777 /tmp
+
+# Set the entrypoint
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 USER vllm
