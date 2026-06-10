@@ -9,5 +9,7 @@ if ! whoami &> /dev/null; then
   # Force the container's glibc to look at your custom passwd file
   export LD_PRELOAD=libnss_wrapper.so
   export NSS_WRAPPER_PASSWD=/tmp/passwd
+  # Just use standard groups
+  export NSS_WRAPPER_GROUP=/etc/group
 fi
 exec "$@"
